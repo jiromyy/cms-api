@@ -18,5 +18,3 @@ def fetch_app_config(app_id: str) -> dict:
     app_config = AppConfigValues(config_values=app_config_dict)
 
     return app_config
-
-

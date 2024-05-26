@@ -9,7 +9,7 @@ def validate_secret_key(func):
 
     This decorator checks the 'X-API-SECRET-KEY' value in the request headers against
     a predefined key. If the key matches, the decorated function is executed. If not,
-    it aborts the request with a 401 Unauthorized status.    
+    it aborts the request with a 401 Unauthorized status.
     """
     def validate_and_execute(*args, **kwargs):
 
