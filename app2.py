@@ -284,7 +284,7 @@ def update(function, subfolder):
                         st.error(f"An error occurred while updating {file.name}", icon="❌")
 
 def delete(subfolder, bu):
-    st.subheader("Delete") 
+    st.subheader("Delete")
 
     file_list = [file.name.split("/")[-1] for file in blob.container_client.list_blobs(name_starts_with=subfolder)]
     selected_files = []

@@ -9,6 +9,7 @@ from azure.core.credentials import AzureKeyCredential
 from src.config.app_config_values import get_config_values
 from src.blob_manager import BlobManager
 from src.index_manager import IndexManager
+from src.utils import ContentManagerUtilities
 from src.auth import validate_secret_key
 from src.config.fetch_app_config import fetch_app_config
 
@@ -66,25 +67,66 @@ class ProcessView(MethodView):
         app_id = request.headers.get("X-APP-ID")
         app_config = fetch_app_config(app_id)
         config_values = get_config_values(app_config)
+        blob_name = {
+            "ccu": config_values.get("blob_name_ccu"),
+            "aspen": config_values.get("blob_name_aspen"),
+            "rrhi": config_values.get("blob_name_rrhi"),
+            "rlc": config_values.get("blob_name_rlc"),
+            "jgsoc": config_values.get("blob_name_jgsoc")
+        }
 
         aisearch_credentials = AzureKeyCredential(config_values.get("aisearch_key"))
 
         index = IndexManager(config_values.get("aisearch_service_endpoint"), config_values.get("aisearch_index"), config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
-
-        index_list = index.list_index_documents(f"document_title eq '{file}'")
+        blob = BlobManager(config_values.get("blob_connection_string"))
         
+        index_list = index.list_index_documents(f"document_title eq '{file}'")
         search_client = SearchClient(endpoint=config_values.get("aisearch_service_endpoint"), index_name=config_values.get("aisearch_index"), credential=aisearch_credentials)
         
+        doc_url = None
         
+        # Delete the document from the index
         for item in index_list:
             document_key = item.get('id')
-            res = search_client.delete_documents([{"@search.action": "delete", "id": document_key}])
+            doc_url = item.get('download_url')
+            print(document_key)
+            search_client.delete_documents([{"@search.action": "delete", "id": document_key}])
+        
+        if doc_url:
+            response = ReturnData(
+                status=200,
+                message="Content deleted successfully",
+                data=header_data.user
+            )
             
-        response = ReturnData(
-            status=200,
-            message="Content deleted successfully",
-            data=header_data.user
-        )
+            # Delete the document from the blob storage
+            if "generic" in doc_url:
+                function = doc_url.split("/")[4]
+                
+                for bu in blob_name.keys():
+                    print(blob_name[bu.lower()])
+                    blob.set_blob_service_client(blob_name[bu.lower()])
+                    res = blob.delete_azure_blob_item(file, f"{function}/generic/")
+                    print(res)
+            else:
+                bu = doc_url.split("/")[3]
+                function = doc_url.split("/")[4]
+                blob.set_blob_service_client(bu)
+                blob.delete_azure_blob_item(file, f"{function}/specific/")
+                
+            # Delete the document from the preprocessing blob storage
+            blob.set_blob_service_client(config_values.get("blob_name_preprocessing"))
+            utils = ContentManagerUtilities()
+            sanitized_file = utils.sanitize_filename(file)
+            blob.delete_azure_blob_item(sanitized_file + ".json", "")
+            blob.delete_azure_blob_item(sanitized_file + "-embedding.json", "")
+        else:
+            response = ReturnData(
+                status=404,
+                message="Content not found",
+                data=header_data.user
+            )
+            
         return response
         
 @content_manager_bp.route("/update")
