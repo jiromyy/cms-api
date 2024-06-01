@@ -52,7 +52,7 @@ class IndexManager(ContentManagerUtilities, BlobManager):
         self.openai_client = AzureOpenAI(api_key = self.openai_api_key, api_version = self.openai_api_version, azure_endpoint = self.openai_endpoint)
         self.blob_name_preprocessing = blob_name_preprocessing
         
-    def upload_update_item_azure_index(self, file, category):
+    def upload_update_item_azure_index(self, file, filename, category):
         """
         Upload or update an item in the Azure Cognitive Search index.
         
@@ -64,10 +64,10 @@ class IndexManager(ContentManagerUtilities, BlobManager):
         - True if the item was uploaded or updated successfully, False otherwise
         """
         #get the file name without the extension to use as the filename in the json blob
-        self.file_name = self.sanitize_filename(file.name)
+        self.file_name = self.sanitize_filename(filename)
 
         # Create a temporary file
-        self.tmp_path = self._copy_temp(file)
+        self.tmp_path = self._copy_temp(file, filename)
         self.loader = PyPDFLoader(self.tmp_path)
         self.pages = self.loader.load()
         self.chunks = self._split_text(self.pages)

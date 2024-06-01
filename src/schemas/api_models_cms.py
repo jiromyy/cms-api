@@ -28,7 +28,18 @@ class ListReturnData:
     status: int
     message: str
     data: Optional[ListItem] = None
+    
+@dataclass(slots=True)
+class UploadBodyData:
+    """
+    Handles API response data payload.
+    """
+    applicability: str
+    function: str
+    data: str
+    
 
 ListItemSchema = schema_class(ListItem, meta=meta)
 ListReturnDataSchema = schema_class(ListReturnData, meta=meta)
+UploadBodyDataSchema = schema_class(UploadBodyData, meta=meta)
     

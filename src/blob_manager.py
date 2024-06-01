@@ -2,6 +2,7 @@ from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPerm
 from datetime import datetime, timedelta
 import json
 from dotenv import load_dotenv
+import base64
 
 load_dotenv()
 
@@ -75,7 +76,7 @@ class BlobManager:
         """
         return self.container_client.list_blobs(name_starts_with=subfolder)
 
-    def upload_azure_blob_item(self, file, path):
+    def upload_azure_blob_item(self, file, filename, path):
         print(path)
         """
         Upload an Azure Blob Item.
@@ -87,7 +88,7 @@ class BlobManager:
         Returns:
         - True if the file was uploaded successfully, False otherwise
         """
-        self.blob_client = self.container_client.get_blob_client(f'{path}{file.name}')
+        self.blob_client = self.container_client.get_blob_client(f'{path}{filename}')
         try:
             # Specify the content type
             content_settings = ContentSettings(content_type='application/pdf')
@@ -97,7 +98,7 @@ class BlobManager:
         except Exception as e:
             return False
         
-    def update_azure_blob_item(self, file, path):
+    def update_azure_blob_item(self, file, filename, path):
         """
         Update an Azure Blob Item.
         
@@ -108,7 +109,7 @@ class BlobManager:
         Returns:
         - True if the file was updated successfully, False otherwise
         """
-        self.blob_client = self.container_client.get_blob_client(f'{path}{file.name}')
+        self.blob_client = self.container_client.get_blob_client(f'{path}{filename}')
         try:
             
             # Specify the content type

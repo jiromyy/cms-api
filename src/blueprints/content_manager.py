@@ -1,5 +1,7 @@
 import json
 import os
+import base64
+import tempfile
 from dateutil import tz
 from flask import jsonify, request
 from flask_smorest import Blueprint
@@ -12,6 +14,7 @@ from src.index_manager import IndexManager
 from src.utils import ContentManagerUtilities
 from src.auth import validate_secret_key
 from src.config.fetch_app_config import fetch_app_config
+from langchain_community.document_loaders import PyPDFLoader
 
 from src.schemas.api_models_generic import (
     HeaderDataSchema, 
@@ -23,8 +26,9 @@ from src.schemas.api_models_cms import (
     ListItemSchema,
     ListReturnData,
     ListItem,
-    ListReturnDataSchema)
-
+    ListReturnDataSchema,
+    UploadBodyData,
+    UploadBodyDataSchema)
 
 content_manager_bp = Blueprint("Content Manager", __name__, url_prefix="/v1", description="Content Management System API")
 
@@ -43,24 +47,73 @@ class ContentManager(MethodView):
         )
         return response
     
-    
 @content_manager_bp.route("/process/<file>")
 class ProcessView(MethodView):
-    
     @content_manager_bp.arguments(HeaderDataSchema, location="headers")
+    @content_manager_bp.arguments(UploadBodyDataSchema, location="json")
     @content_manager_bp.response(200, ReturnDataSchema)
+    @content_manager_bp.response(500, ReturnDataSchema)
     @validate_secret_key.validate_secret_key
-    def post(self, header_data: HeaderData):
+    def post(self, header_data: HeaderData, upload_body_data: UploadBodyData, file:str):
+            
+        filename = file
+        applicability = upload_body_data.applicability
+        function = upload_body_data.function
+        data = upload_body_data.data
         
-        response = ReturnData(
-            status=200,
-            message="Content Manager API is working",
-            data=header_data.user
-        )
-        return response
+        pdf_bytes = base64.b64decode(data)
+
+        # Write the bytes to a PDF file
+        with open("output.pdf", "wb") as pdf_file:
+            pdf_file.write(pdf_bytes)
+        
+        app_id = request.headers.get("X-APP-ID")
+        app_config = fetch_app_config(app_id)
+        config_values = get_config_values(app_config)
+        blob_name = {
+            "ccu": config_values.get("blob_name_ccu"),
+            "aspen": config_values.get("blob_name_aspen"),
+            "rrhi": config_values.get("blob_name_rrhi"),
+            "rlc": config_values.get("blob_name_rlc"),
+            "jgsoc": config_values.get("blob_name_jgsoc")
+        }
+        
+        
+        blob = BlobManager(config_values.get("blob_connection_string"))
+        index = IndexManager(config_values.get("aisearch_service_endpoint"), config_values.get("aisearch_index"), config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
+
+        if applicability.lower() == "generic":
+            for bu in blob_name.keys():
+                        blob.set_blob_service_client(blob_name[bu])
+                        res = blob.upload_azure_blob_item(data, function.lower()+'/generic/')
+        else:
+            blob.set_blob_service_client(blob_name[applicability.lower()])
+            res = blob.upload_azure_blob_item(pdf_bytes, filename, function.lower()+'/specific/')
+        
+        if res:
+            res = index.upload_update_item_azure_index(pdf_bytes, filename, function)
+            if res:
+                response = ReturnData(
+                    status=200,
+                    message="Content uploaded successfully"
+                )
+            else:
+                response = ReturnData(
+                    status=500,
+                    message="Error uploading to the index"
+                )
+        else:
+            print("already exists in the container. Use the update button instead.")
+            response = ReturnData(
+                status=500,
+                message="Error uploading to the blob"
+            )
+
+        return jsonify(response)
     
     @content_manager_bp.arguments(HeaderDataSchema, location="headers")
     @content_manager_bp.response(200, ReturnDataSchema)
+    @content_manager_bp.response(404, ReturnDataSchema)
     @validate_secret_key.validate_secret_key
     def delete(self, header_data: HeaderData, file:str):
         
@@ -74,6 +127,8 @@ class ProcessView(MethodView):
             "rlc": config_values.get("blob_name_rlc"),
             "jgsoc": config_values.get("blob_name_jgsoc")
         }
+        
+        print("Blob Name", blob_name)
 
         aisearch_credentials = AzureKeyCredential(config_values.get("aisearch_key"))
 
@@ -89,9 +144,9 @@ class ProcessView(MethodView):
         for item in index_list:
             document_key = item.get('id')
             doc_url = item.get('download_url')
-            print(document_key)
+            
             search_client.delete_documents([{"@search.action": "delete", "id": document_key}])
-        
+        print(doc_url)
         if doc_url:
             response = ReturnData(
                 status=200,
@@ -211,3 +266,5 @@ class ListView(MethodView):
         )
 
         return jsonify(response)
+    
+    

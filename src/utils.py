@@ -16,7 +16,7 @@ class ContentManagerUtilities:
     
     The methods in this class are used by the IndexManager class.    
     """
-    def _copy_temp(self, file):
+    def _copy_temp(self, file, filename):
         """
         Copy the uploaded file to a temporary directory.
         
@@ -26,17 +26,14 @@ class ContentManagerUtilities:
         Returns:
         - the path to the temporary file
         """
-        # Get the original file name
-        self.original_file_name = file.name
-
         # Create a temporary directory
         self.tmp_dir = tempfile.mkdtemp()
 
         # Create a file in the temporary directory with the same name as the original file
-        self.tmp_path = os.path.join(self.tmp_dir, self.original_file_name)
+        self.tmp_path = os.path.join(self.tmp_dir, filename)
         with open(self.tmp_path, 'wb') as tmp:
             # Write the contents of the uploaded file to the temporary file
-            tmp.write(file.read())
+            tmp.write(file)
 
         return self.tmp_path
 
