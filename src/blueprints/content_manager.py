@@ -61,11 +61,8 @@ class ProcessView(MethodView):
         function = upload_body_data.function
         data = upload_body_data.data
         
+        #decode the base64 data
         pdf_bytes = base64.b64decode(data)
-
-        # Write the bytes to a PDF file
-        with open("output.pdf", "wb") as pdf_file:
-            pdf_file.write(pdf_bytes)
         
         app_id = request.headers.get("X-APP-ID")
         app_config = fetch_app_config(app_id)
@@ -78,15 +75,17 @@ class ProcessView(MethodView):
             "jgsoc": config_values.get("blob_name_jgsoc")
         }
         
-        
         blob = BlobManager(config_values.get("blob_connection_string"))
         index = IndexManager(config_values.get("aisearch_service_endpoint"), config_values.get("aisearch_index"), config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
-
         if applicability.lower() == "generic":
+            index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name["ccu"]}/{function.lower()}/generic/', config_values.get("blob_sas_token"))
+            
             for bu in blob_name.keys():
                         blob.set_blob_service_client(blob_name[bu])
                         res = blob.upload_azure_blob_item(data, function.lower()+'/generic/')
         else:
+            index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name[applicability.lower()]}/{function.lower()}/specific/', config_values.get("blob_sas_token"))
+            
             blob.set_blob_service_client(blob_name[applicability.lower()])
             res = blob.upload_azure_blob_item(pdf_bytes, filename, function.lower()+'/specific/')
         
@@ -110,7 +109,7 @@ class ProcessView(MethodView):
             )
 
         return jsonify(response)
-    
+       
     @content_manager_bp.arguments(HeaderDataSchema, location="headers")
     @content_manager_bp.response(200, ReturnDataSchema)
     @content_manager_bp.response(404, ReturnDataSchema)
@@ -164,6 +163,7 @@ class ProcessView(MethodView):
                     res = blob.delete_azure_blob_item(file, f"{function}/generic/")
                     print(res)
             else:
+                print(doc_url)
                 bu = doc_url.split("/")[3]
                 function = doc_url.split("/")[4]
                 blob.set_blob_service_client(bu)

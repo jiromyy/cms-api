@@ -94,7 +94,7 @@ class BlobManager:
             content_settings = ContentSettings(content_type='application/pdf')
             
             self.blob_client.upload_blob(file, content_settings=content_settings)
-            return True
+        
         except Exception as e:
             return False
         

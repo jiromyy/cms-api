@@ -20,5 +20,7 @@ def get_config_values(app_config):
         "blob_name_rlc": os.getenv(app_config.config_values["blob_storage_config"]["blob_name_rlc"]),
         "blob_name_jgsoc": os.getenv(app_config.config_values["blob_storage_config"]["blob_name_jgsoc"]),
         "blob_name_rrhi": os.getenv(app_config.config_values["blob_storage_config"]["blob_name_rrhi"]),
+        "blob_link": os.getenv(app_config.config_values["blob_storage_config"]["blob_link"]),
+        "blob_sas_token": os.getenv(app_config.config_values["blob_storage_config"]["blob_sas_token"]),
     }
     return config_values
