@@ -7,4 +7,4 @@ apt-get update
 apt-get install -y libreoffice
 
 # Start your main application
-python /home/site/wwwroot/app.py
+gunicorn --bind=0.0.0.0 --timeout 600 app:app
