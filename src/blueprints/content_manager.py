@@ -60,6 +60,7 @@ class ProcessView(MethodView):
         pdf_bytes = utils.convert_docx_to_pdf(docx_bytes, filename)
 
         # decode the base64 data
+        pdf_bytes_decoded = base64.b64decode(pdf_bytes)
 
 
         filename = filename.split(".")[0] + ".pdf"
@@ -96,12 +97,12 @@ class ProcessView(MethodView):
             
             for bu in blob_name.keys():
                         blob.set_blob_service_client(blob_name[bu])
-                        res = blob.upload_azure_blob_item(pdf_bytes, filename, function.lower()+'/generic/')
+                        res = blob.upload_azure_blob_item(pdf_bytes_decoded, filename, function.lower()+'/generic/')
         else:
             #index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name[applicability.lower()]}/{function.lower()}/specific/', config_values.get("blob_sas_token"))
             
             blob.set_blob_service_client(blob_name[applicability.lower()])
-            res = blob.upload_azure_blob_item(pdf_bytes, filename, function.lower()+'/specific/')
+            res = blob.upload_azure_blob_item(pdf_bytes_decoded, filename, function.lower()+'/specific/')
         
         if res:
             #res = index.upload_update_item_azure_index(docx_bytes, filename, function)

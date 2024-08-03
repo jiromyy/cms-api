@@ -30,7 +30,7 @@ class ContentManagerUtilities:
         """
         # Create a temporary directory
         # self.tmp_dir = tempfile.mkdtemp()
-        self.tmp_dir = 'temps'
+        self.tmp_dir = tempfile.mkdtemp()
         bytes = base64.b64decode(file)
 
         # Create a file in the temporary directory with the same name as the original file
