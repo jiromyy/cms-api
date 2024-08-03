@@ -25,7 +25,7 @@ class ReturnData:
     """
     status: int
     message: str
-    data: Optional[str] = None
+    #data: Optional[str] = None
     
 # Schemas
 HeaderDataSchema = schema_class(HeaderData, meta=meta)

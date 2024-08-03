@@ -1,7 +1,4 @@
-import json
-import os
 import base64
-import tempfile
 from dateutil import tz
 from flask import jsonify, request
 from flask_smorest import Blueprint
@@ -14,7 +11,6 @@ from src.index_manager import IndexManager
 from src.utils import ContentManagerUtilities
 from src.auth import validate_secret_key
 from src.config.fetch_app_config import fetch_app_config
-from langchain_community.document_loaders import PyPDFLoader
 
 from src.schemas.api_models_generic import (
     HeaderDataSchema, 
@@ -25,8 +21,6 @@ from src.schemas.api_models_generic import (
 from src.schemas.api_models_cms import (
     ListItemSchema,
     ListReturnData,
-    ListItem,
-    ListReturnDataSchema,
     UploadBodyData,
     UploadBodyDataSchema)
 
@@ -43,7 +37,7 @@ class ContentManager(MethodView):
         response = ReturnData(
             status=200,
             message="Content Manager API is working",
-            data=header_data.user
+            #data=header_data.user
         )
         return response
     
@@ -59,38 +53,58 @@ class ProcessView(MethodView):
         filename = file
         applicability = upload_body_data.applicability
         function = upload_body_data.function
-        data = upload_body_data.data
-        
-        #decode the base64 data
-        pdf_bytes = base64.b64decode(data)
+        docx_bytes = upload_body_data.data
+
+        # convert to pdf
+        utils = ContentManagerUtilities()
+        pdf_bytes = utils.convert_docx_to_pdf(docx_bytes, filename)
+
+        # decode the base64 data
+
+
+        filename = filename.split(".")[0] + ".pdf"
         
         app_id = request.headers.get("X-APP-ID")
+        user = request.headers.get("X-USER")
+
         app_config = fetch_app_config(app_id)
         config_values = get_config_values(app_config)
+
         blob_name = {
-            "ccu": config_values.get("blob_name_ccu"),
-            "aspen": config_values.get("blob_name_aspen"),
-            "rrhi": config_values.get("blob_name_rrhi"),
-            "rlc": config_values.get("blob_name_rlc"),
-            "jgsoc": config_values.get("blob_name_jgsoc")
+            "ccu": config_values.get("blob_ccu"),
+            "aspen": config_values.get("blob_aspen"),
+            "rrhi": config_values.get("blob_rrhi"),
+            "rlc": config_values.get("blob_rlc"),
+            "jgsoc": config_values.get("blob_jgsoc"),
+            "urc": config_values.get("blob_urc")
+        }
+
+        index_name = {
+            "ccu": config_values.get("index_ccu"),
+            "aspen": config_values.get("index_aspen"),
+            "rrhi": config_values.get("index_rrhi"),
+            "rlc": config_values.get("index_rlc"),
+            "jgsoc": config_values.get("index_jgsoc"),
+            "urc": config_values.get("index_urc")
         }
         
         blob = BlobManager(config_values.get("blob_connection_string"))
-        index = IndexManager(config_values.get("aisearch_service_endpoint"), config_values.get("aisearch_index"), config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
+        #index = IndexManager(config_values.get("service_endpoint"), config_values.get("index"), config_values.get("key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
+        
         if applicability.lower() == "generic":
-            index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name["ccu"]}/{function.lower()}/generic/', config_values.get("blob_sas_token"))
+            #index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name["ccu"]}/{function.lower()}/generic/', config_values.get("blob_sas_token"))
             
             for bu in blob_name.keys():
                         blob.set_blob_service_client(blob_name[bu])
-                        res = blob.upload_azure_blob_item(data, function.lower()+'/generic/')
+                        res = blob.upload_azure_blob_item(pdf_bytes, filename, function.lower()+'/generic/')
         else:
-            index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name[applicability.lower()]}/{function.lower()}/specific/', config_values.get("blob_sas_token"))
+            #index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name[applicability.lower()]}/{function.lower()}/specific/', config_values.get("blob_sas_token"))
             
             blob.set_blob_service_client(blob_name[applicability.lower()])
             res = blob.upload_azure_blob_item(pdf_bytes, filename, function.lower()+'/specific/')
         
         if res:
-            res = index.upload_update_item_azure_index(pdf_bytes, filename, function)
+            #res = index.upload_update_item_azure_index(docx_bytes, filename, function)
             if res:
                 response = ReturnData(
                     status=200,
@@ -107,7 +121,6 @@ class ProcessView(MethodView):
                 status=500,
                 message="Error uploading to the blob"
             )
-
         return jsonify(response)
        
     @content_manager_bp.arguments(HeaderDataSchema, location="headers")
@@ -115,7 +128,6 @@ class ProcessView(MethodView):
     @content_manager_bp.response(404, ReturnDataSchema)
     @validate_secret_key.validate_secret_key
     def delete(self, header_data: HeaderData, file:str):
-        
         app_id = request.headers.get("X-APP-ID")
         app_config = fetch_app_config(app_id)
         config_values = get_config_values(app_config)
@@ -129,13 +141,13 @@ class ProcessView(MethodView):
         
         print("Blob Name", blob_name)
 
-        aisearch_credentials = AzureKeyCredential(config_values.get("aisearch_key"))
+        credentials = AzureKeyCredential(config_values.get("key"))
 
-        index = IndexManager(config_values.get("aisearch_service_endpoint"), config_values.get("aisearch_index"), config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
+        index = IndexManager(config_values.get("service_endpoint"), config_values.get("index"), config_values.get("key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
         blob = BlobManager(config_values.get("blob_connection_string"))
         
         index_list = index.list_index_documents(f"document_title eq '{file}'")
-        search_client = SearchClient(endpoint=config_values.get("aisearch_service_endpoint"), index_name=config_values.get("aisearch_index"), credential=aisearch_credentials)
+        search_client = SearchClient(endpoint=config_values.get("service_endpoint"), index_name=config_values.get("index"), credential=credentials)
         
         doc_url = None
         
@@ -217,7 +229,7 @@ class ListView(MethodView):
             "jgsoc": config_values.get("blob_name_jgsoc")
         }
         
-        index = IndexManager(config_values.get("aisearch_service_endpoint"), config_values.get("aisearch_index"), config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
+        index = IndexManager(config_values.get("service_endpoint"), config_values.get("index"), config_values.get("key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
         blob = BlobManager(config_values.get("blob_connection_string"))
         
         print("Index", index)

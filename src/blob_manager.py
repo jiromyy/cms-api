@@ -4,7 +4,7 @@ import json
 from dotenv import load_dotenv
 import base64
 
-load_dotenv()
+load_dotenv(".env.development", override=True)
 
 class BlobManager:
     """
@@ -77,7 +77,6 @@ class BlobManager:
         return self.container_client.list_blobs(name_starts_with=subfolder)
 
     def upload_azure_blob_item(self, file, filename, path):
-        print(path)
         """
         Upload an Azure Blob Item.
         
