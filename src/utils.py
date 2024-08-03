@@ -1,9 +1,11 @@
+import base64
 import tempfile
 import os
 import re
+import subprocess
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(".env.development", override=True)
 
 class ContentManagerUtilities:
     """
@@ -27,13 +29,15 @@ class ContentManagerUtilities:
         - the path to the temporary file
         """
         # Create a temporary directory
-        self.tmp_dir = tempfile.mkdtemp()
+        # self.tmp_dir = tempfile.mkdtemp()
+        self.tmp_dir = 'temps'
+        bytes = base64.b64decode(file)
 
         # Create a file in the temporary directory with the same name as the original file
         self.tmp_path = os.path.join(self.tmp_dir, filename)
         with open(self.tmp_path, 'wb') as tmp:
             # Write the contents of the uploaded file to the temporary file
-            tmp.write(file)
+            tmp.write(bytes)
 
         return self.tmp_path
 
@@ -76,3 +80,48 @@ class ContentManagerUtilities:
         print(self.filename)
 
         return self.filename
+    
+    def convert_docx_to_pdf(self, data, filename):
+        """
+        Convert a DOCX file to a PDF file using LibreOffice.
+        
+        Parameters:
+        - data: the DOCX file
+
+        Returns:
+        - the PDF file
+        """
+
+        # Create a temporary directory
+        input_path = self._copy_temp(data, filename)
+
+        # Create a temporary directory for the output PDF
+        output_dir = 'temps'
+        print(f"Output directory: {output_dir}")
+
+        # Ensure the output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Convert the DOCX file to PDF using LibreOffice
+        subprocess.run(['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', output_dir, input_path], check=True)
+
+        # Define the output PDF path
+        pdf_file_path = os.path.join(output_dir, os.path.basename(input_path).replace('.docx', '.pdf'))
+        print(f"Expected PDF file path: {pdf_file_path}")
+
+        # Check if the PDF file was created
+        if not os.path.exists(pdf_file_path):
+            raise FileNotFoundError(f"PDF file was not created: {pdf_file_path}")
+        else:
+            print(f"PDF file created successfully: {pdf_file_path}")
+
+        # Read the PDF file and encode it in Base64
+        with open(pdf_file_path, 'rb') as pdf_file:
+            pdf_bytes = pdf_file.read()
+            encoded_pdf = base64.b64encode(pdf_bytes)
+
+        # delete the temporary files
+        # self._delete_temp(input_path)
+        # self._delete_temp(pdf_file_path)
+
+        return encoded_pdf

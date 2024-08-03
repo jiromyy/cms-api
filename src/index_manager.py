@@ -9,7 +9,7 @@ import json
 import uuid
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(".env.development", override=True)
 
 class IndexManager(ContentManagerUtilities, BlobManager):
     """

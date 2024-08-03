@@ -17,21 +17,25 @@ class AppConfigManager:
                 },
                 "ai_search_config": {
                     "aisearch_service_endpoint": "CMS_AZURE_AI_SEARCH_ENDPOINT",
-                    "aisearch_index": "CMS_AZURE_AI_SEARCH_INDEX_NAME",
-                    "aisearch_key": "CMS_AZURE_AI_SEARCH_API_KEY"
+                    "aisearch_key": "CMS_AZURE_AI_SEARCH_API_KEY",
+                    "index_ccu": "CMS_AI_SEARCH_INDEX_NAME_CCU",
+                    "index_aspen": "CMS_AI_SEARCH_INDEX_NAME_ASPEN",
+                    "index_rlc": "CMS_AI_SEARCH_INDEX_NAME_RLC",
+                    "index_jgsoc": "CMS_AI_SEARCH_INDEX_NAME_JGSOC",
+                    "index_rrhi": "CMS_AI_SEARCH_INDEX_NAME_RRHI",
+                    "index_urc": "CMS_AI_SEARCH_INDEX_NAME_URC",
                 },
                 "blob_storage_config": {
                     "blob_connection_string": "CMS_AZURE_BLOB_CONNECTION_STRING",
-                    "blob_name_preprocessing": "CMS_AZURE_BLOB_NAME_PREPROCESSING",
+                    "blob_name_preprocessing": "CMS_AZURE_BLOB_CONTAINER_NAME_PREPROCESS",
                     "blob_link":"CMS_AZURE_BLOB_LINK",
-                    "blob_sas_token": "CMS_AZURE_BLOB_SAS_TOKEN",
-                    "blob_name_ccu": "CMS_AZURE_BLOB_CCU_CONTAINER_NAME",
-                    "blob_name_aspen": "CMS_AZURE_BLOB_ASPEN_CONTAINER_NAME",
-                    "blob_name_rlc": "CMS_AZURE_BLOB_RLC_CONTAINER_NAME",
-                    "blob_name_jgsoc": "CMS_AZURE_BLOB_JGSOC_CONTAINER_NAME",
-                    "blob_name_rrhi": "CMS_AZURE_BLOB_RRHI_CONTAINER_NAME",
+                    "blob_sas_token": "CCU_AZURE_BLOB_SAS_TOKEN",
+                    "blob_name_ccu": "CMS_AZURE_BLOB_CONTAINER_NAME_CCU",
+                    "blob_name_aspen": "CMS_AZURE_BLOB_CONTAINER_NAME_ASPEN",
+                    "blob_name_rlc": "CMS_AZURE_BLOB_CONTAINER_NAME_RLC",
+                    "blob_name_jgsoc": "CMS_AZURE_BLOB_CONTAINER_NAME_JGSOC",
+                    "blob_name_rrhi": "CMS_AZURE_BLOB_CONTAINER_NAME_RRHI",
+                    "blob_name_urc": "CMS_AZURE_BLOB_CONTAINER_NAME_URC",
                 },
            },     
     }
-
-

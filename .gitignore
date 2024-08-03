@@ -1,2 +1,5 @@
 .env
 *.pyc
+/temps
+.env.production
+.env.development
