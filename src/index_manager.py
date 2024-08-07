@@ -48,11 +48,12 @@ class IndexManager(ContentManagerUtilities, BlobManager):
         self.openai_api_version = openai_api_version
         self.openai_endpoint = openai_endpoint
         self.aisearch_credentials = AzureKeyCredential(self.aisearch_key)
+        print("name of the index", self.aisearch_index_name)
         self.ai_search_service_client = SearchClient(endpoint=self.aisearch_service_endpoint, index_name=self.aisearch_index_name, credential=self.aisearch_credentials)
         self.openai_client = AzureOpenAI(api_key = self.openai_api_key, api_version = self.openai_api_version, azure_endpoint = self.openai_endpoint)
         self.blob_name_preprocessing = blob_name_preprocessing
         
-    def upload_update_item_azure_index(self, file, filename, category):
+    def upload_update_item_azure_index(self, file, filename, category, user):
         """
         Upload or update an item in the Azure Cognitive Search index.
         
@@ -72,7 +73,7 @@ class IndexManager(ContentManagerUtilities, BlobManager):
         self.pages = self.loader.load()
         self.chunks = self._split_text(self.pages)
         self.kb_dict = self._serialize_chunks(self.chunks)
-        self.kb_dict = self._clean_data(self.kb_dict, category)
+        self.kb_dict = self._clean_data(self.kb_dict, category, user)
         print("BLOB", self.blob_name_preprocessing)
         self.set_blob_service_client(self.blob_name_preprocessing)
         self.upload_dict_to_azure_blob(self.kb_dict, self.file_name + '.json', self.blob_name_preprocessing)
@@ -233,7 +234,7 @@ class IndexManager(ContentManagerUtilities, BlobManager):
         
         return self.kb_dict
 
-    def _clean_data(self, kb_dict, category):
+    def _clean_data(self, kb_dict, category, user):
         """
         Clean the data.
         
@@ -286,6 +287,10 @@ class IndexManager(ContentManagerUtilities, BlobManager):
         # add key: 'category'
         for dictionary in kb_dict:
             dictionary['category'] = category
+            
+        # add key: 'uploaded_by'
+        for dictionary in kb_dict:
+            dictionary['uploaded_by'] = user
                 
         # Add a new UUID as 'id'
         for dictionary in kb_dict:

@@ -95,6 +95,7 @@ class BlobManager:
             self.blob_client.upload_blob(file, content_settings=content_settings)
             return True
         except Exception as e:
+            print(e)
             return False
         
     def update_azure_blob_item(self, file, filename, path):

@@ -53,20 +53,16 @@ class ProcessView(MethodView):
         filename = file
         applicability = upload_body_data.applicability
         function = upload_body_data.function
-        docx_bytes = upload_body_data.data
+        pdf_bytes = upload_body_data.data
 
-        # convert to pdf
-        utils = ContentManagerUtilities()
-        pdf_bytes = utils.convert_docx_to_pdf(docx_bytes, filename)
+        # TODO
+        # create a checker if applicability and function are valid
 
         # decode the base64 data
         pdf_bytes_decoded = base64.b64decode(pdf_bytes)
-
-
-        filename = filename.split(".")[0] + ".pdf"
         
-        app_id = request.headers.get("X-APP-ID")
-        user = request.headers.get("X-USER")
+        app_id = header_data.app_id
+        user = header_data.user
 
         app_config = fetch_app_config(app_id)
         config_values = get_config_values(app_config)
@@ -90,39 +86,79 @@ class ProcessView(MethodView):
         }
         
         blob = BlobManager(config_values.get("blob_connection_string"))
-        #index = IndexManager(config_values.get("service_endpoint"), config_values.get("index"), config_values.get("key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
+        
         
         if applicability.lower() == "generic":
-            #index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name["ccu"]}/{function.lower()}/generic/', config_values.get("blob_sas_token"))
-            
             for bu in blob_name.keys():
-                        blob.set_blob_service_client(blob_name[bu])
-                        res = blob.upload_azure_blob_item(pdf_bytes_decoded, filename, function.lower()+'/generic/')
+                print("Processing for", blob_name[bu])
+                index = IndexManager(config_values.get("aisearch_service_endpoint"), index_name[bu], config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_preprocessing"))
+                index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name[bu]}/{function.lower()}/generic/', config_values.get("blob_sas_token"))
+                blob.set_blob_service_client(blob_name[bu])
+                
+                print("Uploading blob... ", end="")
+                res = blob.upload_azure_blob_item(pdf_bytes_decoded, filename, function.lower()+'/generic/')
+                if res:
+                    print("Success")
+                    print("Uploading to index... ", end="")
+                    res = index.upload_update_item_azure_index(pdf_bytes, filename, function, user)
+                    if res:
+                        print("Success")
+                        response = ReturnData(
+                            status=200,
+                            message="Content uploaded successfully"
+                        )
+                    else:
+                        print("Failed")
+                        response = ReturnData(
+                            status=500,
+                            message="Error uploading to the index"
+                        )
+                        return jsonify(response)
+                else:
+                    print("Failed")
+                    response = ReturnData(
+                        status=500,
+                        message="Error uploading to the blob"
+                    )
+                    return jsonify(response)
+                    
+            return jsonify(response)
         else:
-            #index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name[applicability.lower()]}/{function.lower()}/specific/', config_values.get("blob_sas_token"))
-            
+            print("Processing for", blob_name[applicability.lower()])
+            index = IndexManager(config_values.get("aisearch_service_endpoint"), index_name[applicability.lower()], config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_preprocessing"))
+            index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name[applicability.lower()]}/{function.lower()}/specific/', config_values.get("blob_sas_token"))
             blob.set_blob_service_client(blob_name[applicability.lower()])
+            
+            print("Uploading blob... ", end="")
             res = blob.upload_azure_blob_item(pdf_bytes_decoded, filename, function.lower()+'/specific/')
-        
-        if res:
-            #res = index.upload_update_item_azure_index(docx_bytes, filename, function)
             if res:
-                response = ReturnData(
-                    status=200,
-                    message="Content uploaded successfully"
-                )
+                print("Success")
+                print("Uploading to index... ", end="")
+                res = index.upload_update_item_azure_index(pdf_bytes, filename, function, user)
+                if res:
+                    print("Success")
+                    response = ReturnData(
+                        status=200,
+                        message="Content uploaded successfully"
+                    )
+                else:
+                    print("Failed")
+                    response = ReturnData(
+                        status=500,
+                        message="Error uploading to the index"
+                    )
+                    return jsonify(response)
             else:
+                print("Failed")
                 response = ReturnData(
                     status=500,
-                    message="Error uploading to the index"
+                    message="Error uploading to the blob"
                 )
-        else:
-            print("already exists in the container. Use the update button instead.")
-            response = ReturnData(
-                status=500,
-                message="Error uploading to the blob"
-            )
-        return jsonify(response)
+                return jsonify(response)
+            
+            return jsonify(response)
+            
+        
        
     @content_manager_bp.arguments(HeaderDataSchema, location="headers")
     @content_manager_bp.response(200, ReturnDataSchema)
