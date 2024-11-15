@@ -9,7 +9,7 @@ import json
 import uuid
 from dotenv import load_dotenv
 
-load_dotenv(".env.development", override=True)
+load_dotenv(".env.production", override=True)
 
 class IndexManager(ContentManagerUtilities, BlobManager):
     """
@@ -73,7 +73,6 @@ class IndexManager(ContentManagerUtilities, BlobManager):
         self.chunks = self._split_text(self.pages)
         self.kb_dict = self._serialize_chunks(self.chunks)
         self.kb_dict = self._clean_data(self.kb_dict, category)
-        print("BLOB", self.blob_name_preprocessing)
         self.set_blob_service_client(self.blob_name_preprocessing)
         self.upload_dict_to_azure_blob(self.kb_dict, self.file_name + '.json', self.blob_name_preprocessing)
         self.input_data = self.embed(self.kb_dict)
@@ -267,6 +266,8 @@ class IndexManager(ContentManagerUtilities, BlobManager):
         container = self.blob_link
         path = self.blob_path
         blob_sas_token = self.blob_sas
+        
+        print(container, path, blob_sas_token)
 
         # add key: 'download_url' as top level key with value as container + document_title + blob_sas_token
 

@@ -57,10 +57,10 @@ class ProcessView(MethodView):
 
         # convert to pdf
         utils = ContentManagerUtilities()
-        pdf_bytes = utils.convert_docx_to_pdf(docx_bytes, filename)
+        #pdf_bytes = utils.convert_docx_to_pdf(docx_bytes, filename)
 
         # decode the base64 data
-        pdf_bytes_decoded = base64.b64decode(pdf_bytes)
+        pdf_bytes_decoded = base64.b64decode(docx_bytes)
 
 
         filename = filename.split(".")[0] + ".pdf"
@@ -90,39 +90,48 @@ class ProcessView(MethodView):
         }
         
         blob = BlobManager(config_values.get("blob_connection_string"))
-        #index = IndexManager(config_values.get("service_endpoint"), config_values.get("index"), config_values.get("key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
+        index = IndexManager(config_values.get("aisearch_service_endpoint"), config_values.get("index_ccu"), config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_preprocessing"))
         
         if applicability.lower() == "generic":
-            #index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name["ccu"]}/{function.lower()}/generic/', config_values.get("blob_sas_token"))
             
             for bu in blob_name.keys():
+                        #print(config_values.get("blob_link"), f'{blob_name[bu]}/{function.lower()}/generic/', config_values.get("blob_sas_token"))
+                        index = IndexManager(config_values.get("aisearch_service_endpoint"), index_name[bu], config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_preprocessing"))
+                        index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name[bu]}/{function.lower()}/generic/', config_values.get("blob_sas_token"))
                         blob.set_blob_service_client(blob_name[bu])
                         res = blob.upload_azure_blob_item(pdf_bytes_decoded, filename, function.lower()+'/generic/')
+                        
+                        index.upload_update_item_azure_index(docx_bytes, filename, function)
+                        
+                        res = False
         else:
-            #index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name[applicability.lower()]}/{function.lower()}/specific/', config_values.get("blob_sas_token"))
-            
+            print(config_values.get(f"index_{applicability.lower()}"))
+            index = IndexManager(config_values.get("aisearch_service_endpoint"), config_values.get(f"index_{applicability.lower()}"), config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_preprocessing"))
+            index.set_blob_item_url(config_values.get("blob_link"), f'{blob_name[applicability.lower()]}/{function.lower()}/specific/', config_values.get("blob_sas_token"))
             blob.set_blob_service_client(blob_name[applicability.lower()])
+            
             res = blob.upload_azure_blob_item(pdf_bytes_decoded, filename, function.lower()+'/specific/')
         
-        if res:
-            #res = index.upload_update_item_azure_index(docx_bytes, filename, function)
             if res:
-                response = ReturnData(
-                    status=200,
-                    message="Content uploaded successfully"
-                )
+                res = index.upload_update_item_azure_index(docx_bytes, filename, function)
+                print("here")
+                if res:
+                    response = ReturnData(
+                        status=200,
+                        message="Content uploaded successfully"
+                    )
+                else:
+                    response = ReturnData(
+                        status=500,
+                        message="Error uploading to the index"
+                    )
             else:
+                print("already exists in the container. Use the update button instead.")
                 response = ReturnData(
                     status=500,
-                    message="Error uploading to the index"
+                    message="Error uploading to the blob"
                 )
-        else:
-            print("already exists in the container. Use the update button instead.")
-            response = ReturnData(
-                status=500,
-                message="Error uploading to the blob"
-            )
-        return jsonify(response)
+            return jsonify(response)
        
     @content_manager_bp.arguments(HeaderDataSchema, location="headers")
     @content_manager_bp.response(200, ReturnDataSchema)
@@ -142,13 +151,13 @@ class ProcessView(MethodView):
         
         print("Blob Name", blob_name)
 
-        credentials = AzureKeyCredential(config_values.get("key"))
+        credentials = AzureKeyCredential(config_values.get("aisearch_key"))
 
-        index = IndexManager(config_values.get("service_endpoint"), config_values.get("index"), config_values.get("key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
+        index = IndexManager(config_values.get("aisearch_service_endpoint"), config_values.get("index_ccu"), config_values.get("aisearch_key"), config_values.get("openai_api_key"), config_values.get("openai_api_version"), config_values.get("openai_endpoint"), config_values.get("blob_connection_string"), config_values.get("blob_name_preprocessing"))
         blob = BlobManager(config_values.get("blob_connection_string"))
         
         index_list = index.list_index_documents(f"document_title eq '{file}'")
-        search_client = SearchClient(endpoint=config_values.get("service_endpoint"), index_name=config_values.get("index"), credential=credentials)
+        search_client = SearchClient(endpoint=config_values.get("aisearch_service_endpoint"), index_name=config_values.get("index_ccu"), credential=credentials)
         
         doc_url = None
         
@@ -163,7 +172,7 @@ class ProcessView(MethodView):
             response = ReturnData(
                 status=200,
                 message="Content deleted successfully",
-                data=header_data.user
+                #data=header_data.user
             )
             
             # Delete the document from the blob storage
@@ -192,7 +201,7 @@ class ProcessView(MethodView):
             response = ReturnData(
                 status=404,
                 message="Content not found",
-                data=header_data.user
+                #data=header_data.user
             )
             
         return response

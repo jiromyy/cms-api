@@ -5,7 +5,7 @@ import re
 import subprocess
 from dotenv import load_dotenv
 
-load_dotenv(".env.development", override=True)
+load_dotenv(".env.production", override=True)
 
 class ContentManagerUtilities:
     """

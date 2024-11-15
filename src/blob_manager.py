@@ -4,7 +4,7 @@ import json
 from dotenv import load_dotenv
 import base64
 
-load_dotenv(".env.development", override=True)
+load_dotenv(".env.production", override=True)
 
 class BlobManager:
     """
@@ -92,7 +92,7 @@ class BlobManager:
             # Specify the content type
             content_settings = ContentSettings(content_type='application/pdf')
             
-            self.blob_client.upload_blob(file, content_settings=content_settings)
+            self.blob_client.upload_blob(file, content_settings=content_settings, overwrite=True)
             return True
         except Exception as e:
             return False
